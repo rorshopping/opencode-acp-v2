@@ -1,0 +1,34 @@
+{
+  "name": "opencode-acp-v2",
+  "version": "0.1.0",
+  "description": "Active Context Pruning for OpenCode V2 — Core port of opencode-acp to the V2 plugin API (Plugin.define + ctx.session.hook). Model-driven context compression tools: compress, decompress, search_context, acp_status, acp_context_recap.",
+  "license": "AGPL-3.0-or-later",
+  "type": "module",
+  "main": "./src/index.js",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": [
+    "src/index.js",
+    "LICENSE",
+    "README.md"
+  ],
+  "keywords": [
+    "opencode",
+    "opencode-plugin",
+    "plugin",
+    "context",
+    "pruning",
+    "active-context",
+    "optimization",
+    "tokens",
+    "acp",
+    "v2"
+  ],
+  "engines": {
+    "node": ">=18"
+  },
+  "peerDependencies": {
+    "@opencode-ai/plugin": "next"
+  }
+}
