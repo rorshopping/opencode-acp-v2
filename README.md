@@ -1,4 +1,4 @@
-# opencode-acp-v2
+# billion-context-opencode-v2
 
 The [acp-kernel](https://github.com/ranxianglei/acp-kernel) compression pipeline,
 wired into **OpenCode V2** (`opencode2`) as a plugin. Model-driven context
@@ -10,19 +10,19 @@ pattern. Same kernel, same tool set, built on the V2 plugin API
 runs on `opencode2` — V1 plugins do not load there.
 
 Independent of `opencode-acp` — all tools are prefixed `bili_` and coexist
-side-by-side with V1 plugins (`compress` / `acp_status`).
+side-by-side with V1 plugins (`compress` / `bili_status`).
 
 ## Tools
 
 | Tool | Description |
 |------|-------------|
-| `acp_compress` | Replace older conversation ranges with detailed summaries you write. |
-| `acp_decompress` | Restore a compressed block's content (inline or to a file). |
-| `acp_search` | Full-text search across compressed block summaries and historical messages. |
-| `acp_status` | Context status: token breakdown, compressible ranges, nudge decision. |
+| `bili_compress` | Replace older conversation ranges with detailed summaries you write. |
+| `bili_decompress` | Restore a compressed block's content (inline or to a file). |
+| `bili_search` | Full-text search across compressed block summaries and historical messages. |
+| `bili_status` | Context status: token breakdown, compressible ranges, nudge decision. |
 
 Each message part carries an `<acp tokens="X" type="Y">mNNNNN</acp>` ref tag.
-Pass the `mNNNNN` ref as `startId`/`endId` to `acp_compress`.
+Pass the `mNNNNN` ref as `startId`/`endId` to `bili_compress`.
 
 ## Install
 
@@ -33,7 +33,7 @@ Load the plugin from an npm package or a local path via the `plugins` array in
 {
   "compaction": { "auto": false },
   "plugins": [
-    "opencode-acp-v2"
+    "billion-context-opencode-v2"
   ]
 }
 ```
@@ -52,8 +52,8 @@ For a local build:
 Verify it loaded:
 
 ```bash
-opencode2 api get /api/plugin     # look for "opencode-acp-v2"
-opencode2 run "Use the acp_status tool and report what it returns."
+opencode2 api get /api/plugin     # look for "billion-context-opencode-v2"
+opencode2 run "Use the bili_status tool and report what it returns."
 ```
 
 ## Plugin options
@@ -62,7 +62,7 @@ opencode2 run "Use the acp_status tool and report what it returns."
 {
   "plugins": [
     {
-      "package": "opencode-acp-v2",
+      "package": "billion-context-opencode-v2",
       "options": {
         "modelContextLimit": 200000,
         "preserveRecentMessages": 5,
@@ -105,10 +105,10 @@ src/
 ├── messages.ts       # V2 host messages <-> kernel CoreMessage[] + reassembly
 ├── tokens.ts         # Token estimation, covered-message collection
 ├── search-index.ts   # SearchDoc[] builder (blocks + covered messages)
-├── compress-tool.ts  # acp_compress
-├── decompress-tool.ts# acp_decompress
-├── search-tool.ts    # acp_search
-├── status-tool.ts    # acp_status
+├── compress-tool.ts  # bili_compress
+├── decompress-tool.ts# bili_decompress
+├── search-tool.ts    # bili_search
+├── status-tool.ts    # bili_status
 ├── system-prompt.ts  # Compression philosophy + tool guide
 └── log.ts            # Debug logging
 ```

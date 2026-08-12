@@ -1,7 +1,7 @@
 {
-  "name": "opencode-acp-v2",
+  "name": "billion-context-opencode-v2",
   "version": "0.1.0",
-  "description": "The acp-kernel compression pipeline wired into OpenCode V2 (opencode2) as a plugin. Model-driven context management: acp_compress, acp_decompress, acp_search, acp_status.",
+  "description": "The acp-kernel compression pipeline wired into OpenCode V2 (opencode2) as a plugin. Model-driven context management: bili_compress, bili_decompress, bili_search, bili_status.",
   "type": "module",
   "main": "./dist/index.js",
   "exports": {
@@ -37,11 +37,11 @@
   "author": "ranxianglei",
   "repository": {
     "type": "git",
-    "url": "https://github.com/rorshopping/opencode-acp-v2.git"
+    "url": "https://github.com/ranxianglei/billion-context-opencode-v2.git"
   },
-  "homepage": "https://github.com/rorshopping/opencode-acp-v2#readme",
+  "homepage": "https://github.com/ranxianglei/billion-context-opencode-v2#readme",
   "bugs": {
-    "url": "https://github.com/rorshopping/opencode-acp-v2/issues"
+    "url": "https://github.com/ranxianglei/billion-context-opencode-v2/issues"
   },
   "devDependencies": {
     "@opencode-ai/plugin": "next",

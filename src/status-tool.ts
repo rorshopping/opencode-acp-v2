@@ -5,7 +5,7 @@ import { estimateTokens, collectCoveredMessageIds } from "./tokens.js"
 
 export function makeStatusTool(runtime: AcpRuntime): V2ToolInfo {
   return {
-    name: "acp_status",
+    name: "bili_status",
     description:
       "Context status: overview, compressed blocks, or uncompressed ranges/messages. No args = overview + totals + compressible ranges. scope:'uncompressed' + view:'messages' for per-message listing. scope:'compressed' for block drilldown.",
     input: {

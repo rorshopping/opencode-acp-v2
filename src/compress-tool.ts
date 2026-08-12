@@ -35,9 +35,9 @@ const rangeShape = {
 
 export function makeCompressTool(runtime: AcpRuntime): V2ToolInfo {
   return {
-    name: "acp_compress",
+    name: "bili_compress",
     description:
-      "Replace older conversation ranges with detailed summaries you write. Single range: acp_compress({ content: [{ startId, endId, summary }] }). Batch multiple ranges: acp_compress({ content: [{ topic, startId, endId, summary }, ...] }) — each entry gets its own block.",
+      "Replace older conversation ranges with detailed summaries you write. Single range: bili_compress({ content: [{ startId, endId, summary }] }). Batch multiple ranges: bili_compress({ content: [{ topic, startId, endId, summary }, ...] }) — each entry gets its own block.",
     input: {
       type: "object",
       properties: {

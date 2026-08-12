@@ -2534,13 +2534,13 @@ var AcpRuntime = class {
   async save(state, sessionId) {
     await this.store.save(state, sessionId);
   }
-  /** Cache a processTurn result so acp_status can reuse it instead of
+  /** Cache a processTurn result so bili_status can reuse it instead of
    *  recomputing the full pipeline. Only valid until the next save/cores change. */
   cacheTurn(sessionId, state, cores, tokenCount, result) {
     this.turnCache.set(sessionId, { state, cores, tokenCount, result });
   }
   /** Return a cached processTurn result if it is still fresh (same cores array
-   *  reference + same state reference + same tokenCount). acp_status uses this
+   *  reference + same state reference + same tokenCount). bili_status uses this
    *  to avoid recomputing the pipeline on every call. Returns undefined if stale. */
   getCachedTurn(sessionId, state, cores, tokenCount) {
     const entry = this.turnCache.get(sessionId);
@@ -2556,7 +2556,7 @@ var AcpRuntime = class {
    *  attach a .catch() (or await in a try/catch) — the stored chain is
    *  suppressed internally so it never surfaces as an unhandled rejection,
    *  but the caller-observed promise is the raw `next` and will throw.
-   *  All current callers (messages.transform hook, the four acp_ tools)
+   *  All current callers (messages.transform hook, the four bili_ tools)
    *  catch it. */
   acquireLock(sessionId, fn) {
     const prev = this.locks.get(sessionId) ?? Promise.resolve();
@@ -2800,7 +2800,7 @@ function makeNudgeMessage(id, sessionID, text) {
 }
 
 // src/tokens.ts
-var COMPRESS_TOOL_NAMES = /* @__PURE__ */ new Set(["acp_compress"]);
+var COMPRESS_TOOL_NAMES = /* @__PURE__ */ new Set(["bili_compress"]);
 function estimateTokens(messages, coveredIds) {
   let tokens = 0;
   for (const m of messages) {
@@ -2827,8 +2827,8 @@ var rangeShape = {
 };
 function makeCompressTool(runtime) {
   return {
-    name: "acp_compress",
-    description: "Replace older conversation ranges with detailed summaries you write. Single range: acp_compress({ content: [{ startId, endId, summary }] }). Batch multiple ranges: acp_compress({ content: [{ topic, startId, endId, summary }, ...] }) \u2014 each entry gets its own block.",
+    name: "bili_compress",
+    description: "Replace older conversation ranges with detailed summaries you write. Single range: bili_compress({ content: [{ startId, endId, summary }] }). Batch multiple ranges: bili_compress({ content: [{ topic, startId, endId, summary }, ...] }) \u2014 each entry gets its own block.",
     input: {
       type: "object",
       properties: {
@@ -2927,12 +2927,12 @@ function findMessageContent(ref, cores) {
 }
 function makeDecompressTool(runtime) {
   return {
-    name: "acp_decompress",
-    description: 'Restore a previously compressed block, or a single message by its ref. The block/message stays compressed \u2014 context is not disrupted. BLOCK decompress (blockId "b5") defaults to writing a file; use inline:true to return inline. MESSAGE decompress (blockId = a message ref from acp_search results) returns that ONE message original text, default inline. full:true recurses through nested tiers (block mode only).',
+    name: "bili_decompress",
+    description: 'Restore a previously compressed block, or a single message by its ref. The block/message stays compressed \u2014 context is not disrupted. BLOCK decompress (blockId "b5") defaults to writing a file; use inline:true to return inline. MESSAGE decompress (blockId = a message ref from bili_search results) returns that ONE message original text, default inline. full:true recurses through nested tiers (block mode only).',
     input: {
       type: "object",
       properties: {
-        blockId: { type: "string", description: 'Block id to restore, e.g. "b5". Also accepts a message ref from acp_search results \u2014 resolves to the owning block automatically.' },
+        blockId: { type: "string", description: 'Block id to restore, e.g. "b5". Also accepts a message ref from bili_search results \u2014 resolves to the owning block automatically.' },
         full: { type: "boolean", description: "Recurse through all nested blocks to original messages. Default: false (one tier up)." },
         toFile: { type: "string", description: "Write restored content to this path (must be under /tmp, ~/.cache/opencode, or ~/.cache/opencode-bili-acp)." },
         inline: { type: "boolean", description: "Return content inline as this tool result. Default: false for blocks (file), true for single messages." }
@@ -2951,7 +2951,7 @@ async function handleDecompress(args, runtime, ctx) {
   const owner = state.blocks.find((b) => b.effectiveMessageIds.includes(arg));
   if (owner) return { content: await handleMessageRef(arg, owner.blockId, args, cores) };
   const blockId = parseBlockIdArg(arg);
-  if (!blockId) return { content: `Invalid blockId: ${args.blockId}. Expected format like "b5", "5", or a message ref from acp_search results.` };
+  if (!blockId) return { content: `Invalid blockId: ${args.blockId}. Expected format like "b5", "5", or a message ref from bili_search results.` };
   const block = state.blocks.find((b) => b.blockId === blockId);
   if (!block) {
     const active = state.blocks.filter((b) => b.active).map((b) => b.blockId).join(", ");
@@ -3061,8 +3061,8 @@ function buildSearchDocs(state, cores) {
 // src/search-tool.ts
 function makeSearchTool(runtime) {
   return {
-    name: "acp_search",
-    description: "Search compressed blocks AND historical messages by keyword. Use to cheaply locate detail before decompressing. Returns ranked results with ref, size, preview, and the acp_decompress command to retrieve full content.",
+    name: "bili_search",
+    description: "Search compressed blocks AND historical messages by keyword. Use to cheaply locate detail before decompressing. Returns ranked results with ref, size, preview, and the bili_decompress command to retrieve full content.",
     input: {
       type: "object",
       properties: {
@@ -3102,7 +3102,7 @@ function formatResult(r) {
     sizeStr
   ].filter(Boolean).join(" ");
   const header = `${meta}  "${truncate(r.title, 50)}"`;
-  const decompressHint = r.kind === "block" ? `\u2192 acp_decompress({ blockId: "${r.ref}" })` : r.blockId ? `\u2192 acp_decompress({ blockId: "${r.blockId}" })  (block containing message ${r.ref})` : `(message ${r.ref} is still visible in context)`;
+  const decompressHint = r.kind === "block" ? `\u2192 bili_decompress({ blockId: "${r.ref}" })` : r.blockId ? `\u2192 bili_decompress({ blockId: "${r.blockId}" })  (block containing message ${r.ref})` : `(message ${r.ref} is still visible in context)`;
   return `${header}
   ${r.preview}
   ${decompressHint}`;
@@ -3120,7 +3120,7 @@ function formatSize(tokens) {
 // src/status-tool.ts
 function makeStatusTool(runtime) {
   return {
-    name: "acp_status",
+    name: "bili_status",
     description: "Context status: overview, compressed blocks, or uncompressed ranges/messages. No args = overview + totals + compressible ranges. scope:'uncompressed' + view:'messages' for per-message listing. scope:'compressed' for block drilldown.",
     input: {
       type: "object",
@@ -3180,10 +3180,10 @@ BILI CONTEXT MANAGEMENT (billion-context)
 
 You have four context-management tools. Each message in the conversation carries an acp tag like \`<acp tokens="2" type="text">m00001</acp>\` showing its ref (mNNNNN), approximate token size, and content type. Use these refs to compress ranges.
 
-- acp_compress({ content: [{ startId, endId, summary }] }) \u2014 replace an older conversation range with a detailed summary you write. Batch multiple unrelated ranges, each with its own topic.
-- acp_decompress({ blockId }) \u2014 restore a compressed block or a single message ref to inspect exact detail (file contents, errors, signatures). Block stays compressed; output goes to a file by default \u2014 use the read tool to view it.
-- acp_search({ query }) \u2014 keyword-search compressed blocks and folded historical messages to locate detail before decompressing.
-- acp_status({}) \u2014 context status: usage, compressible ranges, active blocks.
+- bili_compress({ content: [{ startId, endId, summary }] }) \u2014 replace an older conversation range with a detailed summary you write. Batch multiple unrelated ranges, each with its own topic.
+- bili_decompress({ blockId }) \u2014 restore a compressed block or a single message ref to inspect exact detail (file contents, errors, signatures). Block stays compressed; output goes to a file by default \u2014 use the read tool to view it.
+- bili_search({ query }) \u2014 keyword-search compressed blocks and folded historical messages to locate detail before decompressing.
+- bili_status({}) \u2014 context status: usage, compressible ranges, active blocks.
 
 WHEN TO COMPRESS
 - Verbose tool output (build/test/logs) once you have the result you need.
@@ -3200,7 +3200,7 @@ Keep verbatim: full file paths with line numbers, function/type signatures and c
 Drop: verbose logs once the error/result is captured, duplicate reads, dead-end exploration (but keep the one-line lesson: "tried X, failed because Y").
 Each summary must be self-contained so the task can continue without the original.
 
-Compress when acp_status shows compressible ranges or when a nudge is injected. The nudge growth threshold adapts to the model's context limit (clamped to a floor and cap), so smaller-context models get nudged sooner.`;
+Compress when bili_status shows compressible ranges or when a nudge is injected. The nudge growth threshold adapts to the model's context limit (clamped to a floor and cap), so smaller-context models get nudged sooner.`;
 
 // src/index.ts
 var SYSTEM_MARKER = "BILI CONTEXT MANAGEMENT";

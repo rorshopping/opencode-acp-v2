@@ -45,7 +45,7 @@ assert.equal(plugin.id, "billion-context-opencode-v2")
 console.log("✓ plugin loaded:", plugin.id)
 
 const names = tools.map((t) => t.name)
-assert.deepEqual(names, ["acp_compress", "acp_decompress", "acp_search", "acp_status"])
+assert.deepEqual(names, ["bili_compress", "bili_decompress", "bili_search", "bili_status"])
 console.log("✓ tools registered:", names.join(", "))
 
 async function runHook(messages, model) {
@@ -94,16 +94,16 @@ const tagCount = (textOf(ev2.messages[0]).match(/<acp/g) || []).length
 assert.equal(tagCount, 1, "exactly one tag per text part")
 console.log("✓ idempotent across dispatches")
 
-// --- acp_status ---
-const statusTool = tools.find((t) => t.name === "acp_status")
+// --- bili_status ---
+const statusTool = tools.find((t) => t.name === "bili_status")
 const statusResult = await statusTool.execute({}, { sessionID: sid })
 const fullContent = typeof statusResult.content === "string" ? statusResult.content : String(statusResult.content);
-console.log("✓ acp_status: FULL:", fullContent);
-console.log("✓ acp_status: LEN:", fullContent.length, "CHARS");
+console.log("✓ bili_status: FULL:", fullContent);
+console.log("✓ bili_status: LEN:", fullContent.length, "CHARS");
 
-// --- acp_compress: compress u2..a2 (the first user message is the opener
+// --- bili_compress: compress u2..a2 (the first user message is the opener
 //    and is always preserved by the kernel, so compress a later range) ---
-const compressTool = tools.find((t) => t.name === "acp_compress")
+const compressTool = tools.find((t) => t.name === "bili_compress")
 const compressResult = await compressTool.execute(
   {
     content: [
@@ -112,7 +112,7 @@ const compressResult = await compressTool.execute(
   },
   { sessionID: sid },
 )
-console.log("✓ acp_compress:", (compressResult.content || "").slice(0, 100).replace(/\n/g, " | "))
+console.log("✓ bili_compress:", (compressResult.content || "").slice(0, 100).replace(/\n/g, " | "))
 
 // --- third dispatch: covered messages pruned, summary placeholder injected ---
 const ev3 = await runHook([u1, a1, u2, a2, u3], { id: "test-model", providerID: "test" })
@@ -124,16 +124,16 @@ assert.ok(allText.includes("alpha alpha"), "uncovered opener content preserved")
 assert.ok(allText.includes("recent question"), "recent message preserved")
 console.log("✓ after compress: summary present, old content pruned, msgs:", ev3.messages.length)
 
-// --- acp_search ---
-const searchTool = tools.find((t) => t.name === "acp_search")
+// --- bili_search ---
+const searchTool = tools.find((t) => t.name === "bili_search")
 const searchResult = await searchTool.execute({ query: "topic A alpha beta" }, { sessionID: sid })
 assert.match(searchResult.content, /b1|block/, "search finds the compressed block")
-console.log("✓ acp_search:", (searchResult.content || "").slice(0, 100).replace(/\n/g, " | "))
+console.log("✓ bili_search:", (searchResult.content || "").slice(0, 100).replace(/\n/g, " | "))
 
-// --- acp_decompress ---
-const decompressTool = tools.find((t) => t.name === "acp_decompress")
+// --- bili_decompress ---
+const decompressTool = tools.find((t) => t.name === "bili_decompress")
 const decompResult = await decompressTool.execute({ blockId: "b1", inline: true }, { sessionID: sid })
 assert.ok((decompResult.content || "").includes("topic B"), "decompress restores original content")
-console.log("✓ acp_decompress:", (decompResult.content || "").slice(0, 90).replace(/\n/g, " | "))
+console.log("✓ bili_decompress:", (decompResult.content || "").slice(0, 90).replace(/\n/g, " | "))
 
 console.log("\n=== ALL SMOKE TESTS PASSED ===")

@@ -5,9 +5,9 @@ import { buildSearchDocs } from "./search-index.js"
 
 export function makeSearchTool(runtime: AcpRuntime): V2ToolInfo {
   return {
-    name: "acp_search",
+    name: "bili_search",
     description:
-      "Search compressed blocks AND historical messages by keyword. Use to cheaply locate detail before decompressing. Returns ranked results with ref, size, preview, and the acp_decompress command to retrieve full content.",
+      "Search compressed blocks AND historical messages by keyword. Use to cheaply locate detail before decompressing. Returns ranked results with ref, size, preview, and the bili_decompress command to retrieve full content.",
     input: {
       type: "object",
       properties: {
@@ -56,9 +56,9 @@ function formatResult(r: ReturnType<typeof searchBlocks>[number]): string {
   const header = `${meta}  "${truncate(r.title, 50)}"`
   const decompressHint =
     r.kind === "block"
-      ? `→ acp_decompress({ blockId: "${r.ref}" })`
+      ? `→ bili_decompress({ blockId: "${r.ref}" })`
       : r.blockId
-        ? `→ acp_decompress({ blockId: "${r.blockId}" })  (block containing message ${r.ref})`
+        ? `→ bili_decompress({ blockId: "${r.blockId}" })  (block containing message ${r.ref})`
         : `(message ${r.ref} is still visible in context)`
 
   return `${header}\n  ${r.preview}\n  ${decompressHint}`

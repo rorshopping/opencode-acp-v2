@@ -48,13 +48,13 @@ function findMessageContent(ref: string, cores: { id: string; text?: string; rol
 
 export function makeDecompressTool(runtime: AcpRuntime): V2ToolInfo {
   return {
-    name: "acp_decompress",
+    name: "bili_decompress",
     description:
-      'Restore a previously compressed block, or a single message by its ref. The block/message stays compressed — context is not disrupted. BLOCK decompress (blockId "b5") defaults to writing a file; use inline:true to return inline. MESSAGE decompress (blockId = a message ref from acp_search results) returns that ONE message original text, default inline. full:true recurses through nested tiers (block mode only).',
+      'Restore a previously compressed block, or a single message by its ref. The block/message stays compressed — context is not disrupted. BLOCK decompress (blockId "b5") defaults to writing a file; use inline:true to return inline. MESSAGE decompress (blockId = a message ref from bili_search results) returns that ONE message original text, default inline. full:true recurses through nested tiers (block mode only).',
     input: {
       type: "object",
       properties: {
-        blockId: { type: "string", description: 'Block id to restore, e.g. "b5". Also accepts a message ref from acp_search results — resolves to the owning block automatically.' },
+        blockId: { type: "string", description: 'Block id to restore, e.g. "b5". Also accepts a message ref from bili_search results — resolves to the owning block automatically.' },
         full: { type: "boolean", description: "Recurse through all nested blocks to original messages. Default: false (one tier up)." },
         toFile: { type: "string", description: "Write restored content to this path (must be under /tmp, ~/.cache/opencode, or ~/.cache/opencode-bili-acp)." },
         inline: { type: "boolean", description: "Return content inline as this tool result. Default: false for blocks (file), true for single messages." },
@@ -76,7 +76,7 @@ async function handleDecompress(args: Record<string, unknown>, runtime: AcpRunti
   if (owner) return { content: await handleMessageRef(arg, owner.blockId, args, cores) }
 
   const blockId = parseBlockIdArg(arg)
-  if (!blockId) return { content: `Invalid blockId: ${args.blockId as string}. Expected format like "b5", "5", or a message ref from acp_search results.` }
+  if (!blockId) return { content: `Invalid blockId: ${args.blockId as string}. Expected format like "b5", "5", or a message ref from bili_search results.` }
   const block = state.blocks.find((b) => b.blockId === blockId)
   if (!block) {
     const active = state.blocks.filter((b) => b.active).map((b) => b.blockId).join(", ")

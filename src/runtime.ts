@@ -59,14 +59,14 @@ export class AcpRuntime {
     await this.store.save(state, sessionId)
   }
 
-  /** Cache a processTurn result so acp_status can reuse it instead of
+  /** Cache a processTurn result so bili_status can reuse it instead of
    *  recomputing the full pipeline. Only valid until the next save/cores change. */
   cacheTurn(sessionId: string, state: CompressionState, cores: CoreMessage[], tokenCount: number, result: ProcessTurnResult): void {
     this.turnCache.set(sessionId, { state, cores, tokenCount, result })
   }
 
   /** Return a cached processTurn result if it is still fresh (same cores array
-   *  reference + same state reference + same tokenCount). acp_status uses this
+   *  reference + same state reference + same tokenCount). bili_status uses this
    *  to avoid recomputing the pipeline on every call. Returns undefined if stale. */
   getCachedTurn(sessionId: string, state: CompressionState, cores: CoreMessage[], tokenCount: number): ProcessTurnResult | undefined {
     const entry = this.turnCache.get(sessionId)
@@ -83,7 +83,7 @@ export class AcpRuntime {
    *  attach a .catch() (or await in a try/catch) — the stored chain is
    *  suppressed internally so it never surfaces as an unhandled rejection,
    *  but the caller-observed promise is the raw `next` and will throw.
-   *  All current callers (messages.transform hook, the four acp_ tools)
+   *  All current callers (messages.transform hook, the four bili_ tools)
    *  catch it. */
   acquireLock<T>(sessionId: string, fn: () => Promise<T>): Promise<T> {
     const prev = this.locks.get(sessionId) ?? Promise.resolve()

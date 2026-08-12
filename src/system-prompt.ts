@@ -6,10 +6,10 @@ BILI CONTEXT MANAGEMENT (billion-context)
 
 You have four context-management tools. Each message in the conversation carries an acp tag like \`<acp tokens="2" type="text">m00001</acp>\` showing its ref (mNNNNN), approximate token size, and content type. Use these refs to compress ranges.
 
-- acp_compress({ content: [{ startId, endId, summary }] }) — replace an older conversation range with a detailed summary you write. Batch multiple unrelated ranges, each with its own topic.
-- acp_decompress({ blockId }) — restore a compressed block or a single message ref to inspect exact detail (file contents, errors, signatures). Block stays compressed; output goes to a file by default — use the read tool to view it.
-- acp_search({ query }) — keyword-search compressed blocks and folded historical messages to locate detail before decompressing.
-- acp_status({}) — context status: usage, compressible ranges, active blocks.
+- bili_compress({ content: [{ startId, endId, summary }] }) — replace an older conversation range with a detailed summary you write. Batch multiple unrelated ranges, each with its own topic.
+- bili_decompress({ blockId }) — restore a compressed block or a single message ref to inspect exact detail (file contents, errors, signatures). Block stays compressed; output goes to a file by default — use the read tool to view it.
+- bili_search({ query }) — keyword-search compressed blocks and folded historical messages to locate detail before decompressing.
+- bili_status({}) — context status: usage, compressible ranges, active blocks.
 
 WHEN TO COMPRESS
 - Verbose tool output (build/test/logs) once you have the result you need.
@@ -26,4 +26,4 @@ Keep verbatim: full file paths with line numbers, function/type signatures and c
 Drop: verbose logs once the error/result is captured, duplicate reads, dead-end exploration (but keep the one-line lesson: "tried X, failed because Y").
 Each summary must be self-contained so the task can continue without the original.
 
-Compress when acp_status shows compressible ranges or when a nudge is injected. The nudge growth threshold adapts to the model's context limit (clamped to a floor and cap), so smaller-context models get nudged sooner.`
+Compress when bili_status shows compressible ranges or when a nudge is injected. The nudge growth threshold adapts to the model's context limit (clamped to a floor and cap), so smaller-context models get nudged sooner.`

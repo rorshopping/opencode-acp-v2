@@ -10,7 +10,7 @@ export { coveredMessageIds as collectCoveredMessageIds }
  *  context. Only the bili_ prefixed name is matched; a bare "compress" would
  *  risk silently zeroing out an unrelated user tool (e.g. an image-compress
  *  tool), skewing the token estimate that drives nudge decisions. */
-const COMPRESS_TOOL_NAMES = new Set(["acp_compress"])
+const COMPRESS_TOOL_NAMES = new Set(["bili_compress"])
 
 export function estimateTokens(messages: CoreMessage[], coveredIds?: Set<string>): number {
   let tokens = 0
