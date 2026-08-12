@@ -1,5 +1,5 @@
 {
-  "name": "billion-context-opencode-v2",
+  "name": "opencode-acp-v2",
   "version": "0.1.0",
   "description": "The acp-kernel compression pipeline wired into OpenCode V2 (opencode2) as a plugin. Model-driven context management: acp_compress, acp_decompress, acp_search, acp_status.",
   "type": "module",

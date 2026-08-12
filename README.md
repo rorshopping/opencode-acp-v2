@@ -1,4 +1,4 @@
-# billion-context-opencode-v2
+# opencode-acp-v2
 
 The [acp-kernel](https://github.com/ranxianglei/acp-kernel) compression pipeline,
 wired into **OpenCode V2** (`opencode2`) as a plugin. Model-driven context
@@ -33,7 +33,7 @@ Load the plugin from an npm package or a local path via the `plugins` array in
 {
   "compaction": { "auto": false },
   "plugins": [
-    "billion-context-opencode-v2"
+    "opencode-acp-v2"
   ]
 }
 ```
@@ -52,7 +52,7 @@ For a local build:
 Verify it loaded:
 
 ```bash
-opencode2 api get /api/plugin     # look for "billion-context-opencode-v2"
+opencode2 api get /api/plugin     # look for "opencode-acp-v2"
 opencode2 run "Use the acp_status tool and report what it returns."
 ```
 
@@ -62,7 +62,7 @@ opencode2 run "Use the acp_status tool and report what it returns."
 {
   "plugins": [
     {
-      "package": "billion-context-opencode-v2",
+      "package": "opencode-acp-v2",
       "options": {
         "modelContextLimit": 200000,
         "preserveRecentMessages": 5,
