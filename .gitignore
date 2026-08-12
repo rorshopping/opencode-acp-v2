@@ -1,3 +1,4 @@
 node_modules/
+.test-clean/
 *.log
 .DS_Store

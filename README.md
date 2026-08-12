@@ -1,104 +1,133 @@
-# opencode-acp-v2
+# billion-context-opencode-v2
 
-**Active Context Pruning for OpenCode V2** — a Core port of the
-[opencode-acp](https://github.com/ranxianglei/opencode-acp) (DCP successor)
-design to the **V2 plugin API** (`Plugin.define` + `ctx.session.hook`).
+The [acp-kernel](https://github.com/ranxianglei/acp-kernel) compression pipeline,
+wired into **OpenCode V2** (`opencode2`) as a plugin. Model-driven context
+management: compress, decompress, search, and inspect compressed context blocks.
 
-The model decides *when* and *what* to compress — not a hard limit. This
-package is a working **Core** subset: context management tools, system-prompt
-nudges, and message-range pruning via the V2 context hook. It is a reference
-implementation for bringing ACP-style context pruning to OpenCode V2.
+This is the **V2 adapter** of the [`billion-context-opencode`](https://github.com/ranxianglei/billion-context-opencode)
+pattern. Same kernel, same tool set, built on the V2 plugin API
+(`Plugin.define`, `ctx.session.hook("context")`, `ctx.tool.transform`) so it
+runs on `opencode2` — V1 plugins do not load there.
 
-## Why this exists
+Independent of `opencode-acp` — all tools are prefixed `bili_` and coexist
+side-by-side with V1 plugins (`compress` / `acp_status`).
 
-- `opencode-acp` (and its predecessor DCP) target the **V1 plugin API**
-  (`experimental.chat.messages.transform`, `tool:` maps, `ctx.client`).
-- OpenCode V2 uses a different plugin API (`Plugin.define({ id, setup })`,
-  `ctx.session.hook("context")`, `ctx.tool.transform`). **V1 plugins will not
-  load in V2** — the V2 host rejects them with `SchemaError(Expected object,
-  got async (ctx) => ...)`.
-- This package re-implements the core ACP behavior on the V2 API so it works
-  with `opencode2` today, and serves as a reference for a future upstream port.
+## Tools
+
+| Tool | Description |
+|------|-------------|
+| `acp_compress` | Replace older conversation ranges with detailed summaries you write. |
+| `acp_decompress` | Restore a compressed block's content (inline or to a file). |
+| `acp_search` | Full-text search across compressed block summaries and historical messages. |
+| `acp_status` | Context status: token breakdown, compressible ranges, nudge decision. |
+
+Each message part carries an `<acp tokens="X" type="Y">mNNNNN</acp>` ref tag.
+Pass the `mNNNNN` ref as `startId`/`endId` to `acp_compress`.
 
 ## Install
 
+Load the plugin from an npm package or a local path via the `plugins` array in
+`opencode.json` (project or global):
+
 ```jsonc
-// ~/.config/opencode/opencode.json (global) or <project>/.opencode/opencode.jsonc
 {
+  "compaction": { "auto": false },
   "plugins": [
-    "opencode-acp-v2@latest"
+    "billion-context-opencode-v2"
   ]
 }
 ```
 
-Restart OpenCode. Verify it loaded:
+For a local build:
+
+```jsonc
+{
+  "compaction": { "auto": false },
+  "plugins": [
+    "./path/to/dist/index.js"
+  ]
+}
+```
+
+Verify it loaded:
 
 ```bash
-opencode2 api get /api/plugin    # look for "opencode-acp"
+opencode2 api get /api/plugin     # look for "billion-context-opencode-v2"
 opencode2 run "Use the acp_status tool and report what it returns."
 ```
 
-## What it does
-
-| Tool | Purpose |
-|------|---------|
-| `compress` | Replace older message ranges with a short technical summary (`[Compressed conversation section] ... [block b1]`) |
-| `decompress` | Restore a compressed block's original messages |
-| `search_context` | Search inside compressed blocks by keyword |
-| `acp_status` | Show context usage %, visible message refs (`m00001`...), active blocks (`b1`...) |
-| `acp_context_recap` | Recap compressed + recent visible context |
-
-Plus:
-- **Message references** `m00001...` / block references `b1...` injected into
-  the system prompt each dispatch, so tools can address ranges.
-- **Protected tail** — the last N messages and last user message are not
-  compressible unless `dangerous: true` is passed.
-- **Context-usage nudges** — appends a soft/strong nudge to the system prompt
-  when usage crosses `compress.minNudgeContextPercent`.
-- **`/acp` command** registered via `ctx.command.transform`.
-
-## Config
-
-`ctx.options` (the object form of a `plugins` entry) take precedence; a
-`acp.jsonc` / `dcp.jsonc` in the OpenCode config dir is used as a fallback
-(JSONC-tolerant — comments and trailing commas OK).
+## Plugin options
 
 ```jsonc
 {
   "plugins": [
     {
-      "package": "opencode-acp-v2@latest",
+      "package": "billion-context-opencode-v2",
       "options": {
-        "compress": {
-          "permission": "allow",          // "ask" | "allow" | "deny"
-          "maxContextLimit": 200000,      // your model's context window
-          "minNudgeContextPercent": 70,   // nudge when usage exceeds this
-          "nudgeForce": "soft",           // "strong" | "soft"
-          "maxSummaryLengthHard": 1600,
-          "preserveRecentMessages": 20,   // tail protected from compression
-          "preserveLastUserMessage": true
-        }
+        "modelContextLimit": 200000,
+        "preserveRecentMessages": 5,
+        "protectedTools": [],
+        "debug": false
       }
     }
   ]
 }
 ```
 
-## Scope / limitations (Core port)
+| Option | Default | Description |
+|--------|---------|-------------|
+| `modelContextLimit` | auto (from model catalog) | Token limit used for nudge math. Env `BILI_MODEL_CONTEXT_LIMIT` overrides. |
+| `preserveRecentMessages` | `5` | Recent messages always kept visible. |
+| `protectedTools` | `[]` | Tool-result message ids never compressed. |
+| `debug` | `false` | Verbose logging. Env `BILI_ACP_DEBUG=1` also enables. |
+| `coreOverrides` | `{}` | Raw `acp-kernel` config overrides (advanced). |
 
-This is **not** a full ACP port. Not implemented:
-- Generational GC of compressed blocks (tier promotion, block aging)
-- Quality gates, message filters, protected-tag/file-pattern handling
-- Embedding-based context search
-- Auto-update, session-state persistence, sub-agent policy
-- Catalog model-limit lookup — `maxContextLimit` is config/default only, so
-  usage % is relative to that value, not the model's actual window
+State persists to `~/.cache/opencode-bili-acp/<session>.acp.json` (override with
+`BILI_ACP_STATE_DIR`).
 
-The V2 plugin API is beta; entrypoints and hooks may change before the stable
-release. Pin a matching `@opencode-ai/plugin@next` when publishing plugins
-against a specific OpenCode release.
+## Development
+
+```bash
+npm run typecheck   # tsc --noEmit
+npm test            # node --import tsx --test tests/*.test.ts
+npm run build       # tsup bundle (acp-kernel inlined, zero runtime deps)
+npm run smoke       # end-to-end check against dist (node, no model required)
+```
+
+## Architecture
+
+```
+src/
+├── index.ts          # Plugin entry: registers tools + context hook
+├── config.ts         # AdapterConfig -> kernel config (defers thresholds to kernel)
+├── runtime.ts        # AcpRuntime: per-session state, lock, cores/model-limit cache
+├── state.ts          # SessionStateStore: ~/.cache/opencode-bili-acp/<sid>.acp.json
+├── messages.ts       # V2 host messages <-> kernel CoreMessage[] + reassembly
+├── tokens.ts         # Token estimation, covered-message collection
+├── search-index.ts   # SearchDoc[] builder (blocks + covered messages)
+├── compress-tool.ts  # acp_compress
+├── decompress-tool.ts# acp_decompress
+├── search-tool.ts    # acp_search
+├── status-tool.ts    # acp_status
+├── system-prompt.ts  # Compression philosophy + tool guide
+└── log.ts            # Debug logging
+```
+
+`acp-kernel` is bundled **inline** by tsup — `dist/index.js` is self-contained
+with zero runtime dependencies (not even `@opencode-ai/plugin`; the plugin
+exports `{ id, setup }` directly). The kernel is used unmodified via its public
+API, preserving its independence and generality.
+
+The V2 hook mapping (validated on `opencode2` v0.0.0-next-17276):
+
+| Concern | V1 (`experimental.chat.*`) | V2 (this package) |
+|---|---|---|
+| System injection | `experimental.chat.system.transform` | `ctx.session.hook("context")` -> upsert system part |
+| Message-range pruning | `experimental.chat.messages.transform` | same hook -> `event.messages` splice |
+| Tools | `tool:` map | `ctx.tool.transform(tools.add)` with `codemode: false` |
+| Model context limit | `input.model.limit.context` | `ctx.catalog.model.list()` lookup |
 
 ## License
 
-**AGPL-3.0-or-later** — this is a derivative design of opencode-acp
-(AGPL-3.0). See [LICENSE](LICENSE).
+MIT. Independent implementation built on `acp-kernel` (MIT); not derived from
+`opencode-acp` (AGPL).
