@@ -44,6 +44,10 @@ export function resolveConfig(
     protectedTools,
     preserveRecentMessages,
     ...adapter.coreOverrides,
+    // The adapter registers its tools as bili_*; the kernel must recognize
+    // bili_compress (acp-kernel compressToolName, fork #ec9b85d) so consumed
+    // invocations are pruned as call+result pairs instead of leaking.
+    compressToolName: "bili_compress",
   })
 
   return {

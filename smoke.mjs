@@ -48,8 +48,8 @@ const names = tools.map((t) => t.name)
 assert.deepEqual(names, ["bili_compress", "bili_decompress", "bili_search", "bili_status"])
 console.log("✓ tools registered:", names.join(", "))
 
-async function runHook(messages, model) {
-  const event = { sessionID: sid, model, system: [], messages, tools: {} }
+async function runHook(messages, model, sessionID = sid) {
+  const event = { sessionID, model, system: [], messages, tools: {} }
   await contextHook(event)
   return event
 }
@@ -135,5 +135,49 @@ const decompressTool = tools.find((t) => t.name === "bili_decompress")
 const decompResult = await decompressTool.execute({ blockId: "b1", inline: true }, { sessionID: sid })
 assert.ok((decompResult.content || "").includes("topic B"), "decompress restores original content")
 console.log("✓ bili_decompress:", (decompResult.content || "").slice(0, 90).replace(/\n/g, " | "))
+
+// --- pairing regression: consumed bili_compress call+result must be hidden ---
+const psid = sid + "-pair"
+const pu1 = userMsg("pu1", "pair opener. " + "aaa ".repeat(800))
+const pa1 = assistantMsg("pa1", "pair reply. " + "bbb ".repeat(800))
+const pu2 = userMsg("pu2", "pair second. " + "ccc ".repeat(800))
+const pa2 = assistantMsg("pa2", "pair second reply. " + "ddd ".repeat(800))
+const pu3 = userMsg("pu3", "pair recent question")
+const callMsg = { id: "pair-asst", role: "assistant", content: [{ type: "tool-call", id: "call-pair-1", name: "bili_compress", input: { content: [] } }] }
+const resultMsg = { id: "pair-tool", role: "tool", content: [{ type: "tool-result", id: "call-pair-1", name: "bili_compress", result: { type: "json", value: "ok" } }] }
+
+const assertBalanced = (msgs, label) => {
+  const callIds = msgs.flatMap((m) => m.content ?? []).filter((p) => p.type === "tool-call" && typeof p.id === "string").map((p) => p.id)
+  const resultIds = msgs.flatMap((m) => m.content ?? []).filter((p) => p.type === "tool-result" && typeof p.id === "string").map((p) => p.id)
+  assert.deepEqual([...callIds].sort(), [...resultIds].sort(), label + ": no orphaned tool-call (each tool-call has a matching result)")
+}
+
+const pp1 = await runHook([pu1, pa1, pu2, pa2, pu3], { id: "test-model", providerID: "test" }, psid)
+const pu2Ref = extractRef(pp1.messages[2])
+const pa2Ref = extractRef(pp1.messages[3])
+assert.ok(pu2Ref && pa2Ref, "pair refs extractable")
+
+await compressTool.execute(
+  { content: [{ startId: pu2Ref, endId: pa2Ref, summary: "Pair range covering the ccc/ddd pair messages for the pairing regression test.", topic: "pair" }] },
+  { sessionID: psid, id: "call-pair-1" },
+)
+
+const pairHistory = [pu1, pa1, pu2, pa2, callMsg, resultMsg, pu3]
+const pp2 = await runHook(pairHistory, { id: "test-model", providerID: "test" }, psid)
+assertBalanced(pp2.messages, "after first compress")
+assert.ok(pp2.messages.map(textOf).join("\n").includes("[Compressed conversation section]"), "pair summary placeholder present")
+
+await compressTool.execute(
+  { content: [{ startId: "b1", endId: "b1", summary: "Consumed pair block for the pairing regression verification.", topic: "pair" }] },
+  { sessionID: psid, id: "call-pair-2" },
+)
+
+const pp3 = await runHook(pairHistory, { id: "test-model", providerID: "test" }, psid)
+assertBalanced(pp3.messages, "after block consumed")
+const pairCallCount = pp3.messages.flatMap((m) => m.content ?? []).filter((p) => p.type === "tool-call" && p.id === "call-pair-1").length
+const pairResultCount = pp3.messages.flatMap((m) => m.content ?? []).filter((p) => p.type === "tool-result" && p.id === "call-pair-1").length
+assert.equal(pairCallCount, 0, "consumed bili_compress tool-call hidden")
+assert.equal(pairResultCount, 0, "consumed bili_compress tool-result hidden")
+console.log("✓ pairing: consumed bili_compress call+result hidden, no orphaned tool-calls")
 
 console.log("\n=== ALL SMOKE TESTS PASSED ===")

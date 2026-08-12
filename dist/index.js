@@ -120,6 +120,7 @@ function prune(messages, state, options = {}) {
   const covered = coveredMessageIds(state);
   if (covered.size === 0) return [...messages];
   const inject = options.injectSummaries ?? true;
+  const compressToolName = options.compressToolName ?? "compress";
   const firstUserIndex = messages.findIndex(
     (message) => message.role === "user"
   );
@@ -128,7 +129,8 @@ function prune(messages, state, options = {}) {
   const anchors = inject ? collectSummaryAnchors(state, indexById) : [];
   return stripOrphanedToolResults(
     stripOrphanedToolCalls(
-      rebuildMessages(messages, covered, firstUserIndex, anchors)
+      rebuildMessages(messages, covered, firstUserIndex, anchors),
+      compressToolName
     )
   );
 }
@@ -194,7 +196,7 @@ function stripOrphanedToolResults(messages) {
     (m) => m.contentType !== "tool-result" || !m.toolCallId || knownCallIds.has(m.toolCallId)
   );
 }
-function stripOrphanedToolCalls(messages) {
+function stripOrphanedToolCalls(messages, compressToolName) {
   const knownResultIds = /* @__PURE__ */ new Set();
   for (const m of messages) {
     if (m.contentType === "tool-result" && m.toolCallId) {
@@ -202,7 +204,7 @@ function stripOrphanedToolCalls(messages) {
     }
   }
   return messages.filter(
-    (m) => m.contentType !== "tool-call" || !m.toolCallId || m.toolName === "compress" || knownResultIds.has(m.toolCallId)
+    (m) => m.contentType !== "tool-call" || !m.toolCallId || m.toolName === compressToolName || knownResultIds.has(m.toolCallId)
   );
 }
 function syncBlocks(messages, state) {
@@ -277,6 +279,7 @@ function defaultConfig(modelContextLimit, overrides = {}) {
       minSummaryLength: 50
     },
     protectedTools: [],
+    compressToolName: "compress",
     preserveRecentMessages: 5,
     preserveRecentTokens: 5e3,
     modelContextLimit
@@ -480,7 +483,7 @@ function rewriteCompressText(text, liveKeys) {
   if (kept.length === content.length || kept.length === 0) return null;
   return JSON.stringify({ ...obj, content: kept });
 }
-function hideConsumedCompressCalls(state, messages) {
+function hideConsumedCompressCalls(state, messages, compressToolName = "compress") {
   const allBlockCallIds = /* @__PURE__ */ new Set();
   const activeCallIds = /* @__PURE__ */ new Set();
   const liveRangeKeysByCallId = /* @__PURE__ */ new Map();
@@ -504,7 +507,7 @@ function hideConsumedCompressCalls(state, messages) {
   const lastOrphanedCallIds = [];
   for (let i = messages.length - 1; i >= 0 && lastOrphanedCallIds.length < KEEP_LAST_ORPHANED; i--) {
     const message = messages[i];
-    if (message.toolName !== "compress" || message.contentType !== "tool-call") continue;
+    if (message.toolName !== compressToolName || message.contentType !== "tool-call") continue;
     const callId = message.toolCallId;
     if (callId && !allBlockCallIds.has(callId)) {
       lastOrphanedCallIds.push(callId);
@@ -513,14 +516,14 @@ function hideConsumedCompressCalls(state, messages) {
   const keepCallIds = /* @__PURE__ */ new Set([...activeCallIds, ...lastOrphanedCallIds]);
   const hiddenCallIds = /* @__PURE__ */ new Set();
   for (const message of messages) {
-    if (message.toolName === "compress" && message.contentType === "tool-call" && (!message.toolCallId || !keepCallIds.has(message.toolCallId))) {
+    if (message.toolName === compressToolName && message.contentType === "tool-call" && (!message.toolCallId || !keepCallIds.has(message.toolCallId))) {
       if (message.toolCallId) hiddenCallIds.add(message.toolCallId);
     }
   }
   let hidden = 0;
   const result = [];
   for (const message of messages) {
-    if (message.toolName === "compress" && message.contentType === "tool-call" && (!message.toolCallId || !keepCallIds.has(message.toolCallId))) {
+    if (message.toolName === compressToolName && message.contentType === "tool-call" && (!message.toolCallId || !keepCallIds.has(message.toolCallId))) {
       hidden++;
       continue;
     }
@@ -528,7 +531,7 @@ function hideConsumedCompressCalls(state, messages) {
       hidden++;
       continue;
     }
-    if (message.toolName === "compress" && message.contentType === "tool-call" && message.toolCallId && keepCallIds.has(message.toolCallId)) {
+    if (message.toolName === compressToolName && message.contentType === "tool-call" && message.toolCallId && keepCallIds.has(message.toolCallId)) {
       const liveKeys = liveRangeKeysByCallId.get(message.toolCallId);
       if (liveKeys && liveKeys.size > 0 && !legacyLiveByCallId.has(message.toolCallId)) {
         const rewritten = rewriteCompressText(message.text, liveKeys);
@@ -685,7 +688,9 @@ function createRenderRefsNode(strategy) {
   };
 }
 var renderRefsNode = createRenderRefsNode("all");
-var ALWAYS_PROTECTED_TOOLS = ["compress"];
+function protectedCompressTools(config) {
+  return Array.from(/* @__PURE__ */ new Set([config.compressToolName ?? "compress", "compress"]));
+}
 var NEVER_PRESERVE_RECENT_TOOLS = [
   "decompress",
   "search_context",
@@ -709,7 +714,7 @@ function isMessageProtected(msg, config) {
   if (msg.contentType !== "tool-call" && msg.contentType !== "tool-result" || !msg.toolName) {
     return false;
   }
-  if (ALWAYS_PROTECTED_TOOLS.includes(msg.toolName)) {
+  if (protectedCompressTools(config).includes(msg.toolName)) {
     return true;
   }
   for (const pattern of config.protectedTools) {
@@ -734,12 +739,12 @@ function isMessageProtectedWithPairing(msg, config, protectedCallIds) {
   }
   return false;
 }
-function adjustBoundariesForToolPairs(startIndex, endIndex, messages, maxScan = 20) {
+function adjustBoundariesForToolPairs(startIndex, endIndex, messages, compressToolName = "compress", maxScan = 20) {
   const callIdsInRange = /* @__PURE__ */ new Set();
   for (let i = startIndex; i <= endIndex; i++) {
     const msg = messages[i];
     if (!msg || !msg.toolCallId) continue;
-    if (msg.toolName === "compress") continue;
+    if (msg.toolName === compressToolName) continue;
     callIdsInRange.add(msg.toolCallId);
   }
   if (callIdsInRange.size === 0) {
@@ -1125,8 +1130,13 @@ var syncBlocksNode = {
 };
 var pruneNode = {
   name: "prune",
-  run(io) {
-    return { ...io, messages: prune(io.messages, io.state) };
+  run(io, ctx) {
+    return {
+      ...io,
+      messages: prune(io.messages, io.state, {
+        compressToolName: ctx.config.compressToolName
+      })
+    };
   }
 };
 var filterNode = {
@@ -1139,8 +1149,12 @@ var filterNode = {
 };
 var hideCompressCallsNode = {
   name: "hide-compress-calls",
-  run(io) {
-    const hidden = hideConsumedCompressCalls(io.state, io.messages);
+  run(io, ctx) {
+    const hidden = hideConsumedCompressCalls(
+      io.state,
+      io.messages,
+      ctx.config.compressToolName
+    );
     return { ...io, messages: hidden.messages };
   }
 };
@@ -1235,7 +1249,8 @@ function applySingleRange(input) {
   });
   const rangeMessageIds = applyToolPairAdjustment(
     resolved,
-    input.messages
+    input.messages,
+    input.config.compressToolName
   );
   if (rangeMessageIds.length > resolved.messageIds.length) {
     const indexByRawId = /* @__PURE__ */ new Map();
@@ -1347,14 +1362,15 @@ function applySingleRange(input) {
   }
   return { tokens: compressedTokens, warnings };
 }
-function applyToolPairAdjustment(resolved, messages) {
+function applyToolPairAdjustment(resolved, messages, compressToolName) {
   if (resolved.boundaryKind === "block") {
     return resolved.messageIds;
   }
   const adjusted = adjustBoundariesForToolPairs(
     resolved.startIndex,
     resolved.endIndex,
-    messages
+    messages,
+    compressToolName
   );
   if (adjusted.startIndex === resolved.startIndex && adjusted.endIndex === resolved.endIndex) {
     return resolved.messageIds;
@@ -2479,7 +2495,11 @@ function resolveConfig(adapter, liveLimit) {
   const kernel = defaultConfig(modelContextLimit, {
     protectedTools,
     preserveRecentMessages,
-    ...adapter.coreOverrides
+    ...adapter.coreOverrides,
+    // The adapter registers its tools as bili_*; the kernel must recognize
+    // bili_compress (acp-kernel compressToolName, fork #ec9b85d) so consumed
+    // invocations are pruned as call+result pairs instead of leaking.
+    compressToolName: "bili_compress"
   });
   return {
     kernel,
