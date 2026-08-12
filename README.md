@@ -65,7 +65,7 @@ opencode2 run "Use the bili_status tool and report what it returns."
       "package": "billion-context-opencode-v2",
       "options": {
         "modelContextLimit": 200000,
-        "preserveRecentMessages": 5,
+        "preserveRecentMessages": 8,
         "protectedTools": [],
         "debug": false
       }
@@ -77,7 +77,7 @@ opencode2 run "Use the bili_status tool and report what it returns."
 | Option | Default | Description |
 |--------|---------|-------------|
 | `modelContextLimit` | auto (from model catalog) | Token limit used for nudge math. Env `BILI_MODEL_CONTEXT_LIMIT` overrides. |
-| `preserveRecentMessages` | `5` | Recent messages always kept visible. |
+| `preserveRecentMessages` | `8` | Recent messages always kept visible. |
 | `protectedTools` | `[]` | Tool-result message ids never compressed. |
 | `debug` | `false` | Verbose logging. Env `BILI_ACP_DEBUG=1` also enables. |
 | `coreOverrides` | `{}` | Raw `acp-kernel` config overrides (advanced). |

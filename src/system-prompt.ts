@@ -12,6 +12,7 @@ You have four context-management tools. Each message in the conversation carries
 - bili_status({}) — context status: usage, compressible ranges, active blocks.
 
 WHEN TO COMPRESS
+- Only when context usage is significant (see bili_status) or a nudge appears — do NOT compress after every turn or phase. Avoid churn.
 - Verbose tool output (build/test/logs) once you have the result you need.
 - Consumed exploration and duplicate reads.
 - Resolved discussion threads; intermediate steps of a completed task.
@@ -26,4 +27,4 @@ Keep verbatim: full file paths with line numbers, function/type signatures and c
 Drop: verbose logs once the error/result is captured, duplicate reads, dead-end exploration (but keep the one-line lesson: "tried X, failed because Y").
 Each summary must be self-contained so the task can continue without the original.
 
-Compress when bili_status shows compressible ranges or when a nudge is injected. The nudge growth threshold adapts to the model's context limit (clamped to a floor and cap), so smaller-context models get nudged sooner.`
+Compress when a nudge is injected or bili_status shows high usage — not merely because a compressible range exists. The nudge growth threshold adapts to the model's context limit (clamped to a floor and cap).`

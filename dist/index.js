@@ -2491,11 +2491,34 @@ function envInt(name) {
 function resolveConfig(adapter, liveLimit) {
   const modelContextLimit = adapter.modelContextLimit ?? envInt("BILI_MODEL_CONTEXT_LIMIT") ?? envInt("ACP_MODEL_CONTEXT_LIMIT") ?? (liveLimit && liveLimit > 0 ? liveLimit : void 0) ?? FALLBACK_LIMIT;
   const protectedTools = adapter.protectedTools ?? [];
-  const preserveRecentMessages = adapter.preserveRecentMessages ?? 5;
+  const preserveRecentMessages = adapter.preserveRecentMessages ?? 8;
   const kernel = defaultConfig(modelContextLimit, {
     protectedTools,
     preserveRecentMessages,
     ...adapter.coreOverrides,
+    // Conservative defaults: nudge less often than the kernel's stock values.
+    // Stock (acp-kernel): growthRatio 0.05, growthFloor/growthCap 50000,
+    // minGrowthFloor 20000, minGrowthRatio 0.45, emergency 0.80 → at a 200K
+    // limit that nudges after ~22.5K growth with ~50K compressible. The values
+    // below roughly double both gates (~40K growth, ~80K compressible) so
+    // Billy stops pushing early; the emergency nudge at 85% still catches a
+    // genuinely full context.
+    nudge: {
+      maxContextLimitPct: adapter.coreOverrides?.nudge?.maxContextLimitPct ?? 0.55,
+      minContextLimitPct: adapter.coreOverrides?.nudge?.minContextLimitPct ?? 0.45,
+      frequency: adapter.coreOverrides?.nudge?.frequency ?? 5,
+      iterationThreshold: adapter.coreOverrides?.nudge?.iterationThreshold ?? 15,
+      force: adapter.coreOverrides?.nudge?.force ?? "soft",
+      growthRatio: adapter.coreOverrides?.nudge?.growthRatio ?? 0.1,
+      growthFloor: adapter.coreOverrides?.nudge?.growthFloor ?? 8e4,
+      growthCap: adapter.coreOverrides?.nudge?.growthCap ?? 8e4,
+      minGrowthFloor: adapter.coreOverrides?.nudge?.minGrowthFloor ?? 4e4,
+      minGrowthRatio: adapter.coreOverrides?.nudge?.minGrowthRatio ?? 0.5,
+      emergencyThresholdPct: adapter.coreOverrides?.nudge?.emergencyThresholdPct ?? 0.85
+    },
+    // Keep tier-1 summaries around longer before distilling them into a
+    // tier-2 block, so summary-distillation nudges also fire less often.
+    promotionThreshold: 8,
     // The adapter registers its tools as bili_*; the kernel must recognize
     // bili_compress (acp-kernel compressToolName, fork #ec9b85d) so consumed
     // invocations are pruned as call+result pairs instead of leaking.
@@ -3206,6 +3229,7 @@ You have four context-management tools. Each message in the conversation carries
 - bili_status({}) \u2014 context status: usage, compressible ranges, active blocks.
 
 WHEN TO COMPRESS
+- Only when context usage is significant (see bili_status) or a nudge appears \u2014 do NOT compress after every turn or phase. Avoid churn.
 - Verbose tool output (build/test/logs) once you have the result you need.
 - Consumed exploration and duplicate reads.
 - Resolved discussion threads; intermediate steps of a completed task.
@@ -3220,7 +3244,7 @@ Keep verbatim: full file paths with line numbers, function/type signatures and c
 Drop: verbose logs once the error/result is captured, duplicate reads, dead-end exploration (but keep the one-line lesson: "tried X, failed because Y").
 Each summary must be self-contained so the task can continue without the original.
 
-Compress when bili_status shows compressible ranges or when a nudge is injected. The nudge growth threshold adapts to the model's context limit (clamped to a floor and cap), so smaller-context models get nudged sooner.`;
+Compress when a nudge is injected or bili_status shows high usage \u2014 not merely because a compressible range exists. The nudge growth threshold adapts to the model's context limit (clamped to a floor and cap).`;
 
 // src/index.ts
 var SYSTEM_MARKER = "BILI CONTEXT MANAGEMENT";
